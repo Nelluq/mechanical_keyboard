@@ -1,6 +1,6 @@
 # Mechanical Keyboard
 
-## Backgorund and Overview
+## Background and Overview
 This is a simple exposed-PCB design for a Cherry MX-based mechanical keyboard. It is a full-size 104-key board, but also
 includes 4 extra keys that can be used for anything. It uses PCB-mount Cherry MX switches, and can be assembled with any
 color non-backlit switch (I don't care for keyboard backlighting, so I didn't include it). It runs on an STM32F070C6
@@ -19,8 +19,13 @@ working as well as I wanted. Eventually, in April 2020, I rewrote the entirity o
 [libopencm3](https://gitub.com/libopencm3/libopencm3), which is vastly cleaner and nicer to work with than ST's own
 framework.
 
+## Example
 ![](https://github.com/nelluq/mechanical_keyboard/raw/master/images/keyboard-assembled.jpg)
 (Apologies for the dirty keycaps, I took them off an old keyboard and haven't gotten around to cleaning them.)
+
+This is my keyboard, built on the Rev 2 PCB (newer PCB versions are slightly improved, but generally the same). I used
+Cherry MX brown switches (I prefer blues, but I wanted this to be quieter for work) and opted for matte black
+soldermask, which I think looks awesome. I don't currenty have keycaps for the four extra switches in the corner.
 
 ## Instructions
 Coming soon
