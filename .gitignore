@@ -9,4 +9,5 @@ _autosave*
 *.hex
 *.dfu
 *.elf
-.vscode
+.vscode/*
+!.vscode/tasks.json

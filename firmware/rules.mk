@@ -49,6 +49,7 @@ LD	= $(PREFIX)gcc
 OBJCOPY	= $(PREFIX)objcopy
 OBJDUMP	= $(PREFIX)objdump
 OOCD	?= openocd
+DFU_UTIL ?= dfu-util
 
 OPENCM3_INC = $(OPENCM3_DIR)/include
 
@@ -155,20 +156,9 @@ $(PROJECT).elf: $(OBJS) $(LDSCRIPT) $(LIBDEPS)
 %.list: %.elf
 	$(OBJDUMP) -S $< > $@
 
-%.flash: %.elf
+%.flash: %.bin
 	@printf "  FLASH\t$<\n"
-ifeq (,$(OOCD_FILE))
-	$(Q)(echo "halt; program $(realpath $(*).elf) verify reset" | nc -4 localhost 4444 2>/dev/null) || \
-		$(OOCD) -f interface/$(OOCD_INTERFACE).cfg \
-		-f target/$(OOCD_TARGET).cfg \
-		-c "program $(realpath $(*).elf) verify reset exit" \
-		$(NULL)
-else
-	$(Q)(echo "halt; program $(realpath $(*).elf) verify reset" | nc -4 localhost 4444 2>/dev/null) || \
-		$(OOCD) -f $(OOCD_FILE) \
-		-c "program $(realpath $(*).elf) verify reset exit" \
-		$(NULL)
-endif
+	$(DFU_UTIL) -a 0 -s 0x08000000 -D $<
 
 clean:
 	rm -rf $(BUILD_DIR) $(GENERATED_BINS)
