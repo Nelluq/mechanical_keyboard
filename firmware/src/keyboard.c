@@ -23,6 +23,7 @@
  */
 
 #include "keyboard.h"
+#include "flash_store.h"
 #include "hid_codes.h"
 #include "usb_hid.h"
 
@@ -56,6 +57,9 @@
 #define LED_SELF_TEST_PERIOD_MS 1000
 #define LED_SELF_TEST_CYCLES (LED_SELF_TEST_PERIOD_MS / KEYBOARD_POLL_INTERVAL_MS)
 
+#define MACRO_FLASH_STORE_ADDR 0
+#define NUM_MACROS 4
+
 enum keyboard_led {
     KB_LED_NUMLK,
     KB_LED_CAPLK,
@@ -85,6 +89,19 @@ static const uint8_t keyboard_modifier_map[NUM_ROWS][NUM_COLS] = {
 };
 
 static uint8_t keyboard_key_pressed[NUM_ROWS][NUM_COLS] = {0};
+
+struct keyboard_macro_key {
+    uint8_t row;
+    uint8_t col;
+    uint8_t key_code;
+};
+
+static struct keyboard_macro_key keyboard_macros[NUM_MACROS] = {
+    {.row = 0, .col = 14, .key_code = KEY_A},
+    {.row = 0, .col = 15, .key_code = KEY_S},
+    {.row = 1, .col = 14, .key_code = KEY_D},
+    {.row = 1, .col = 15, .key_code = KEY_F},
+};
 
 static uint16_t keyboard_poll_row = 0;
 
@@ -195,6 +212,29 @@ static void get_status_leds(void) {
     usb_hid_get_leds(&keyboard_hid_report);
 }
 
+static void load_macros() {
+    for (size_t i = 0; i < NUM_MACROS; i++) {
+        flash_store_read(MACRO_FLASH_STORE_ADDR + i, &keyboard_macros[i].key_code, 1);
+    }
+}
+
+static void save_macros() {
+    uint8_t macro_data[NUM_MACROS] __attribute__((__packed__)) = {0};
+    for (size_t i = 0; i < NUM_MACROS; i++) {
+        macro_data[i] = keyboard_macros[i].key_code;
+    }
+    flash_store_write(MACRO_FLASH_STORE_ADDR, macro_data, sizeof(macro_data));
+}
+
+static uint8_t get_macro_code(uint8_t row, uint8_t col) {
+    for (size_t i = 0; i < NUM_MACROS; i++) {
+        if (keyboard_macros[i].row == row && keyboard_macros[i].col == col) {
+            return keyboard_macros[i].key_code;
+        }
+    }
+    return KEY_NONE;
+}
+
 void keyboard_init(void) {
     rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOB);
@@ -221,6 +261,9 @@ void keyboard_init(void) {
 
     // select first row
     gpio_set(ROW_GPIO_PORT, (1 << ++keyboard_poll_row) << ROW_START_PIN);
+
+    // load macros from flash
+    load_macros();
 }
 
 void keyboard_poll(void) {
@@ -230,6 +273,11 @@ void keyboard_poll(void) {
         // get key code and modifier mask for this key
         uint8_t key_code = keyboard_key_map[keyboard_poll_row][col];
         uint8_t modifier_mask = keyboard_modifier_map[keyboard_poll_row][col];
+
+        uint8_t macro_code = get_macro_code(keyboard_poll_row, col);
+        if (macro_code != KEY_NONE) {
+            key_code = macro_code;
+        }
 
         // add and remove key codes and modifier masks when keys are pressed and released
         if ((col_states & (1 << col)) && !keyboard_key_pressed[keyboard_poll_row][col]) {
