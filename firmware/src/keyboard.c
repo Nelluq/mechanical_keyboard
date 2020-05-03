@@ -40,6 +40,28 @@
 #define NUM_ROWS (uint16_t)7
 #define NUM_COLS (uint16_t)16
 
+#define NUMLK_LED_PORT GPIOA
+#define NUMLK_LED_PIN GPIO7
+
+#define CAPLK_LED_PORT GPIOA
+#define CAPLK_LED_PIN GPIO8
+
+#define SCRLK_LED_PORT GPIOA
+#define SCRLK_LED_PIN GPIO9
+
+#define HID_LED_NUMLK 0x1
+#define HID_LED_CAPLK 0x2
+#define HID_LED_SCRLK 0x4
+
+#define LED_SELF_TEST_PERIOD_MS 1000
+#define LED_SELF_TEST_CYCLES (LED_SELF_TEST_PERIOD_MS / KEYBOARD_POLL_INTERVAL_MS)
+
+enum keyboard_led {
+    KB_LED_NUMLK,
+    KB_LED_CAPLK,
+    KB_LED_SCRLK,
+};
+
 // mapping of (row, column) to key code
 static const uint8_t keyboard_key_map[NUM_ROWS][NUM_COLS] = {
     {KEY_GRAVE, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUAL, KEY_BACKSPACE, 0, 0},
@@ -70,6 +92,9 @@ static struct usb_hid_report keyboard_hid_report;
 
 static bool keyboard_data_updated = false;
 static bool keyboard_overflow = false;
+
+static uint32_t keyboard_led_self_test_counter = 0;
+static bool keyboard_led_self_test_done = false;
 
 static void add_key(uint8_t key_code) {
     // don't bother trying if this key doesn't have a key code (i.e. it's a modifier key)
@@ -126,6 +151,34 @@ static void remove_modifier(uint8_t mod_mask) {
     keyboard_data_updated = true;
 }
 
+static void set_led(enum keyboard_led led, bool state) {
+    uint32_t led_port;
+    uint16_t led_pin;
+    
+    switch (led) {
+        case KB_LED_NUMLK:
+            led_port = NUMLK_LED_PORT;
+            led_pin = NUMLK_LED_PIN;
+            break;
+        case KB_LED_CAPLK:
+            led_port = CAPLK_LED_PORT;
+            led_pin = CAPLK_LED_PIN;
+            break;
+        case KB_LED_SCRLK:
+            led_port = SCRLK_LED_PORT;
+            led_pin = SCRLK_LED_PIN;
+            break;
+        default:
+            return;
+    }
+
+    if (state) {
+        gpio_set(led_port, led_pin);
+    } else {
+        gpio_clear(led_port, led_pin);
+    }
+}
+
 static void send_key_data(void) {
     if (!keyboard_overflow) {
         usb_hid_send_report(&keyboard_hid_report);
@@ -136,6 +189,10 @@ static void send_key_data(void) {
         memset(ovf_report.key_codes, KEY_ERR_OVF, sizeof(ovf_report.key_codes));
         usb_hid_send_report(&ovf_report);
     }
+}
+
+static void get_status_leds(void) {
+    usb_hid_get_leds(&keyboard_hid_report);
 }
 
 void keyboard_init(void) {
@@ -150,6 +207,14 @@ void keyboard_init(void) {
     // Set columns as inputs
     uint16_t col_pins = ~(uint16_t)((uint16_t)0xFFFF << NUM_COLS) << COL_START_PIN;
     gpio_mode_setup(COL_GPIO_PORT, GPIO_MODE_INPUT, GPIO_PUPD_NONE, col_pins);
+
+    // Set LEDs as outputs
+    gpio_mode_setup(NUMLK_LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, NUMLK_LED_PIN);
+    gpio_set_output_options(NUMLK_LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_LOW, NUMLK_LED_PIN);
+    gpio_mode_setup(CAPLK_LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, CAPLK_LED_PIN);
+    gpio_set_output_options(CAPLK_LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_LOW, CAPLK_LED_PIN);
+    gpio_mode_setup(SCRLK_LED_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, SCRLK_LED_PIN);
+    gpio_set_output_options(SCRLK_LED_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_LOW, SCRLK_LED_PIN);
 
     // ensure keyboard data is zeroed out
     memset(&keyboard_hid_report, 0, sizeof(keyboard_hid_report));
@@ -180,6 +245,8 @@ void keyboard_poll(void) {
         }
     }
 
+    get_status_leds();
+
     if (keyboard_data_updated) {
         send_key_data();
         keyboard_data_updated = false;
@@ -193,4 +260,15 @@ void keyboard_poll(void) {
         keyboard_poll_row = 0;
     }
     gpio_set(ROW_GPIO_PORT, (1 << keyboard_poll_row) << ROW_START_PIN);
+
+    // During LED self test, keep all LEDs on. Otherwise, set based on HID report
+    if (!keyboard_led_self_test_done && (keyboard_led_self_test_counter++ < LED_SELF_TEST_CYCLES)) {
+        set_led(KB_LED_NUMLK, true);
+        set_led(KB_LED_CAPLK, true);
+        set_led(KB_LED_SCRLK, true);
+    } else {
+        set_led(KB_LED_NUMLK, keyboard_hid_report.leds & HID_LED_NUMLK);
+        set_led(KB_LED_CAPLK, keyboard_hid_report.leds & HID_LED_CAPLK);
+        set_led(KB_LED_SCRLK, keyboard_hid_report.leds & HID_LED_SCRLK);
+    }
 }

@@ -170,6 +170,9 @@ static usbd_device *usb_dev;
 
 static uint8_t usb_control_buf[128];
 
+static bool usb_data_available = false;
+static uint8_t usb_rx_data;
+
 static enum usbd_request_return_codes usb_hid_control_cb(usbd_device *usbd_dev, struct usb_setup_data *req,
     uint8_t **buf, uint16_t *len, usbd_control_complete_callback *complete) {
     
@@ -184,6 +187,20 @@ static enum usbd_request_return_codes usb_hid_control_cb(usbd_device *usbd_dev, 
 
         return USBD_REQ_HANDLED;
     }
+    
+    // process Set_Report request (used for setting LED state)
+    if (
+        (req->bmRequestType & (USB_REQ_TYPE_CLASS | USB_HID_REQ_TYPE_GET_REPORT)) &&
+        (req->bRequest == USB_HID_REQ_TYPE_SET_REPORT)
+    ) {
+        // TODO: make this more dynamic
+        if (req->wValue == 0x0200) {
+            // LED data
+            usb_data_available = true;
+            usb_rx_data = **buf;
+            return USBD_REQ_HANDLED;
+        }
+    }
 
     (void)usbd_dev;
     (void)complete;
@@ -196,9 +213,8 @@ static void usb_set_config(usbd_device *dev, uint16_t wValue) {
     usbd_ep_setup(dev, usb_endpoint_desc.bEndpointAddress, usb_endpoint_desc.bmAttributes,
         usb_endpoint_desc.wMaxPacketSize, NULL);
 
-    // setup the HID control callback
-    usbd_register_control_callback(dev, (USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE),
-        (USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT), usb_hid_control_cb);
+    // setup an HID control callback that responds to any control request
+    usbd_register_control_callback(dev, 0, 0, usb_hid_control_cb);
 
     (void)wValue;
 }
@@ -215,8 +231,11 @@ void usb_hid_init(void) {
     usbd_register_set_config_callback(usb_dev, usb_set_config);
 }
 
-void usb_hid_setup_gpio(void) {
-    
+void usb_hid_get_leds(struct usb_hid_report *report) {
+    if (usb_data_available) {
+        usb_data_available = false;
+        report->leds = usb_rx_data;
+    }
 }
 
 void usb_hid_send_report(struct usb_hid_report *report) {

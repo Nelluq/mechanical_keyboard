@@ -31,8 +31,6 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
 
-bool hid_init = false;
-
 static void setup_clock(void) {
     rcc_osc_on(RCC_HSE);
     rcc_wait_for_osc_ready(RCC_HSE);
