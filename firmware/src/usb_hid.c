@@ -113,23 +113,23 @@ const struct usb_hid_descriptor_full usb_hid_desc = {
 
 const struct usb_endpoint_descriptor usb_endpoint_desc = {
     .bLength = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = USB_ENDPOINT_ADDR_IN(1),
-	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
-	.wMaxPacketSize = 0x0008,
-	.bInterval = 5,  // 5ms - 200Hz
+    .bDescriptorType = USB_DT_ENDPOINT,
+    .bEndpointAddress = USB_ENDPOINT_ADDR_IN(1),
+    .bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
+    .wMaxPacketSize = 0x0008,
+    .bInterval = 5,  // 5ms - 200Hz
 };
 
 const struct usb_interface_descriptor usb_iface_desc = {
     .bLength = USB_DT_INTERFACE_SIZE,
-	.bDescriptorType = USB_DT_INTERFACE,
-	.bInterfaceNumber = 0,
-	.bAlternateSetting = 0,
-	.bNumEndpoints = 1,
-	.bInterfaceClass = USB_CLASS_HID,
-	.bInterfaceSubClass = USB_HID_SUBCLASS_NO,
-	.bInterfaceProtocol = USB_HID_INTERFACE_PROTOCOL_KEYBOARD,
-	.iInterface = 5,
+    .bDescriptorType = USB_DT_INTERFACE,
+    .bInterfaceNumber = 0,
+    .bAlternateSetting = 0,
+    .bNumEndpoints = 1,
+    .bInterfaceClass = USB_CLASS_HID,
+    .bInterfaceSubClass = USB_HID_SUBCLASS_NO,
+    .bInterfaceProtocol = USB_HID_INTERFACE_PROTOCOL_KEYBOARD,
+    .iInterface = 5,
 
     // reference the above endpoint descriptor
     .endpoint = &usb_endpoint_desc,
@@ -146,13 +146,13 @@ const struct usb_interface usb_iface = {
 
 const struct usb_config_descriptor usb_config_desc = {
     .bLength = USB_DT_CONFIGURATION_SIZE,
-	.bDescriptorType = USB_DT_CONFIGURATION,
-	.wTotalLength = USB_HID_CONFIG_TOTAL_SIZE,
-	.bNumInterfaces = 1,
-	.bConfigurationValue = 1,
-	.iConfiguration = 4,
-	.bmAttributes = USB_CONFIG_ATTR_DEFAULT | USB_CONFIG_ATTR_REMOTE_WAKEUP,
-	.bMaxPower = 50,  // 100mA
+    .bDescriptorType = USB_DT_CONFIGURATION,
+    .wTotalLength = USB_HID_CONFIG_TOTAL_SIZE,
+    .bNumInterfaces = 1,
+    .bConfigurationValue = 1,
+    .iConfiguration = 4,
+    .bmAttributes = USB_CONFIG_ATTR_DEFAULT | USB_CONFIG_ATTR_REMOTE_WAKEUP,
+    .bMaxPower = 50,  // 100mA
 
     // reference the above interface
     .interface = &usb_iface
