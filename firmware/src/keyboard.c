@@ -45,6 +45,7 @@ static uint16_t keyboard_poll_row = 0;
 static struct usb_hid_report keyboard_hid_report;
 
 static bool keyboard_data_updated = false;
+static bool keyboard_overflow = false;
 
 static void add_key(uint8_t key_code) {
     // don't bother trying if this key doesn't have a key code (i.e. it's a modifier key)
@@ -52,6 +53,7 @@ static void add_key(uint8_t key_code) {
         return;
     }
     
+    int free_slot = -1;
     for (int slot = 0; slot < MAX_NUM_KEY_CODES; slot++) {
         // do not add a key multiple times
         if (keyboard_hid_report.key_codes[slot] == key_code) {
@@ -60,10 +62,16 @@ static void add_key(uint8_t key_code) {
 
         // find the next free slot, add the key code
         if (keyboard_hid_report.key_codes[slot] == KEY_NONE) {
-            keyboard_hid_report.key_codes[slot] = key_code;
-            keyboard_data_updated = true;
-            return;
+            free_slot = slot;
         }
+    }
+
+    if (free_slot != -1) {
+        keyboard_hid_report.key_codes[free_slot] = key_code;
+        keyboard_data_updated = true;
+    } else {
+        // overflow - indicate this to the host
+        keyboard_overflow = true;
     }
 }
 
@@ -78,6 +86,7 @@ static void remove_key(uint8_t key_code) {
         if (keyboard_hid_report.key_codes[slot] == key_code) {
             keyboard_hid_report.key_codes[slot] = KEY_NONE;
             keyboard_data_updated = true;
+            keyboard_overflow = false;
             // don't immediately return in case the key is in multiple slots (shouldn't happen)
         }
     }
@@ -94,7 +103,15 @@ static void remove_modifier(uint8_t mod_mask) {
 }
 
 static void send_key_data(void) {
-    usb_hid_send_report(&keyboard_hid_report);
+    if (!keyboard_overflow) {
+        usb_hid_send_report(&keyboard_hid_report);
+    } else {
+        // in case of an overflow, set all key slots to KEY_ERR_OVF
+        struct usb_hid_report ovf_report;
+        memcpy(&ovf_report, &keyboard_hid_report, sizeof(ovf_report));
+        memset(ovf_report.key_codes, KEY_ERR_OVF, sizeof(ovf_report.key_codes));
+        usb_hid_send_report(&ovf_report);
+    }
 }
 
 void keyboard_init(void) {
