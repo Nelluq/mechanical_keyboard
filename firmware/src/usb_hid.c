@@ -25,6 +25,7 @@
 #include "usb_hid.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
@@ -170,8 +171,10 @@ static usbd_device *usb_dev;
 
 static uint8_t usb_control_buf[128];
 
-static bool usb_data_available = false;
-static uint8_t usb_rx_data;
+static bool usb_control_data_available = false;
+static bool usb_ep_data_available = false;
+static uint8_t usb_control_rx_data;
+static uint8_t usb_ep_rx_data[4];
 
 static enum usbd_request_return_codes usb_hid_control_cb(usbd_device *usbd_dev, struct usb_setup_data *req,
     uint8_t **buf, uint16_t *len, usbd_control_complete_callback *complete) {
@@ -196,8 +199,8 @@ static enum usbd_request_return_codes usb_hid_control_cb(usbd_device *usbd_dev, 
         // TODO: make this more dynamic
         if (req->wValue == 0x0200) {
             // LED data
-            usb_data_available = true;
-            usb_rx_data = **buf;
+            usb_control_data_available = true;
+            usb_control_rx_data = **buf;
             return USBD_REQ_HANDLED;
         }
     }
@@ -208,10 +211,17 @@ static enum usbd_request_return_codes usb_hid_control_cb(usbd_device *usbd_dev, 
     return USBD_REQ_NOTSUPP;
 }
 
+static void usb_hid_ep_cb(usbd_device *usbd_dev, uint8_t ep) {
+    uint16_t rx_bytes = usbd_ep_read_packet(usbd_dev, ep, usb_ep_rx_data, sizeof(usb_ep_rx_data));
+    if (rx_bytes == sizeof(usb_ep_rx_data)) {
+        usb_ep_data_available = true;
+    }
+}
+
 static void usb_set_config(usbd_device *dev, uint16_t wValue) {
     // setup the keyboard configuration regardless of wValue (since it's the only one)
     usbd_ep_setup(dev, usb_endpoint_desc.bEndpointAddress, usb_endpoint_desc.bmAttributes,
-        usb_endpoint_desc.wMaxPacketSize, NULL);
+        usb_endpoint_desc.wMaxPacketSize, usb_hid_ep_cb);
 
     // setup an HID control callback that responds to any control request
     usbd_register_control_callback(dev, 0, 0, usb_hid_control_cb);
@@ -232,10 +242,19 @@ void usb_hid_init(void) {
 }
 
 void usb_hid_get_leds(struct usb_hid_report *report) {
-    if (usb_data_available) {
-        usb_data_available = false;
-        report->leds = usb_rx_data;
+    if (usb_control_data_available) {
+        usb_control_data_available = false;
+        report->leds = usb_control_rx_data;
     }
+}
+
+bool usb_hid_get_macro_config(uint8_t *macro_codes) {
+    if (usb_ep_data_available) {
+        usb_control_data_available = false;
+        memcpy(macro_codes, usb_ep_rx_data, sizeof(usb_ep_rx_data));
+        return true;
+    }
+    return false;
 }
 
 void usb_hid_send_report(struct usb_hid_report *report) {

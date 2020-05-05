@@ -226,6 +226,16 @@ static void save_macros() {
     flash_store_write(MACRO_FLASH_STORE_ADDR, macro_data, sizeof(macro_data));
 }
 
+static void get_macro_config() {
+    uint8_t macro_data[NUM_MACROS] = {0};
+    if (usb_hid_get_macro_config(&macro_data)) {
+        for (size_t i = 0; i < NUM_MACROS; i++) {
+            keyboard_macros[i].key_code = macro_data[i];
+        }
+        save_macros();
+    }
+}
+
 static uint8_t get_macro_code(uint8_t row, uint8_t col) {
     for (size_t i = 0; i < NUM_MACROS; i++) {
         if (keyboard_macros[i].row == row && keyboard_macros[i].col == col) {
@@ -294,6 +304,7 @@ void keyboard_poll(void) {
     }
 
     get_status_leds();
+    get_macro_config();
 
     if (keyboard_data_updated) {
         send_key_data();
