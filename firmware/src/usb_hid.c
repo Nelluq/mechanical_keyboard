@@ -250,7 +250,7 @@ void usb_hid_get_leds(struct usb_hid_report *report) {
 
 bool usb_hid_get_macro_config(uint8_t *macro_codes) {
     if (usb_ep_data_available) {
-        usb_control_data_available = false;
+        usb_ep_data_available = false;
         memcpy(macro_codes, usb_ep_rx_data, sizeof(usb_ep_rx_data));
         return true;
     }
