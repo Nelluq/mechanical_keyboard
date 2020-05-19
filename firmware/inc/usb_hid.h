@@ -40,8 +40,6 @@ void usb_hid_init(void);
 
 void usb_hid_get_leds(struct usb_hid_report *report);
 
-bool usb_hid_get_macro_config(uint8_t *macro_codes);
-
 void usb_hid_send_report(struct usb_hid_report *report);
 
 void usb_hid_poll(void);

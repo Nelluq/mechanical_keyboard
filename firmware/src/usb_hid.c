@@ -118,7 +118,7 @@ const struct usb_endpoint_descriptor usb_endpoint_desc = {
     .bEndpointAddress = USB_ENDPOINT_ADDR_IN(1),
     .bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
     .wMaxPacketSize = 0x0008,
-    .bInterval = 5,  // 5ms - 200Hz
+    .bInterval = 2,  // 2ms - 500Hz
 };
 
 const struct usb_interface_descriptor usb_iface_desc = {
@@ -246,15 +246,6 @@ void usb_hid_get_leds(struct usb_hid_report *report) {
         usb_control_data_available = false;
         report->leds = usb_control_rx_data;
     }
-}
-
-bool usb_hid_get_macro_config(uint8_t *macro_codes) {
-    if (usb_ep_data_available) {
-        usb_ep_data_available = false;
-        memcpy(macro_codes, usb_ep_rx_data, sizeof(usb_ep_rx_data));
-        return true;
-    }
-    return false;
 }
 
 void usb_hid_send_report(struct usb_hid_report *report) {
