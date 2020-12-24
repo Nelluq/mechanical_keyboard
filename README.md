@@ -11,8 +11,8 @@ component libraries. Except for the key switches and the USB port, all the compo
 it a little trickier to hand solder for people with less soldering experience (especially the 108 SOD-323 diodes...),
 but it's entirely possible.
 
-I started the project in August 2019 because I needed a better keyboard for work, and I wanted to try out STM32 MCUs,
-which I hadn't used before. I couldn't get the firmware woring initially, so set it aside for a few months and finally
+I started the project in August 2019 because I needed a better keyboard for work. I also wanted to try out STM32 MCUs,
+which I hadn't used before. I couldn't get the firmware working initially, so set it aside for a few months and finally
 finished it in February 2020. The first version of the firmware was written using the STM32Cube framework with
 STM32 HAL, but I ended up not being satisfied with the generated code from that system, and the keyboard itself wasn't
 working as well as I wanted. Eventually, in April 2020, I rewrote the entirity of the firmware using
